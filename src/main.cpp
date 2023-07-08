@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <windows.h>
 #include "glad/glad.h"
@@ -13,26 +14,45 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f
+    0.5f, 0.5f, 0.0f,       1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, 0.0f,      1.0f, 1.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,
+    -0.5f, 0.5f, 0.0f,       0.0f, 0.0f, 1.0f
+};
+
+unsigned int indices[] = {
+    0, 1, 3,
+    1, 2, 3
+};
+
+float texture_coordinates[] = {
+    1.0f, 1.0f,
+    1.0f, 0.0f,
+    0.0f, 0.0f,
+    0.0f, 1.0f
 };
 
 const char *shader_vertex_source = R""(
 #version 330 core
 layout (location = 0) in vec3 pos;
+layout (location = 1) in vec3 vertex_color;
+
+out vec3 fragment_color;
 
 void main() {
+    fragment_color = vertex_color;
     gl_Position = vec4(pos, 1.0);
 }
 )"";
 
 const char *shader_fragment_source = R""(
 #version 330 core
-out vec4 fragment_color;
+
+in vec3 fragment_color;
+out vec4 color;
 
 void main() {
-    fragment_color = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    color = vec4(fragment_color, 1.0f);
 }
 )"";
 
@@ -98,20 +118,28 @@ int main() {
 
     GLuint vao;
     GLuint vbo;
-    
+    GLuint ebo;
+
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
-    
+    glGenBuffers(1, &ebo);
+
     glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), NULL);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) 0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) (3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);    
     glBindVertexArray(0);
-
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) break;
@@ -121,12 +149,17 @@ int main() {
 
         glUseProgram(shader);
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(*indices), GL_UNSIGNED_INT, 0);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
     
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteProgram(shader);
+
     glfwTerminate();
+    
     return 0;
 }
