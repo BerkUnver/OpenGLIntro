@@ -17,6 +17,7 @@
 
 #define SHADER_LOG_SIZE 1024
 #define PI 3.14159265358979323846f
+#define TAU (PI * 2.0f)
 #define MATRIX_TRANSPOSED GL_TRUE // Whether the matrix type is stored as transposed compared to an OpenGL matrix
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
@@ -220,21 +221,29 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(texture_raw);
 
-    float rotation = 0.0f;
-
+    float view_rotation = 0.0f;
+    double time_previous = glfwGetTime();
+    
     while (!glfwWindowShouldClose(window)) {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) break;
-        
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) break; 
+        float time_current = glfwGetTime();
+        float delta = (float) (time_current - time_previous);
+        time_previous = time_current;
+
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader);
 
-        Matrix rotation_axis = MatrixRotate({ 1.0f, 1.0f, 1.0f }, atanf(sqrt(2.0f)));
-        Matrix rotation = MatrixRotate({ 0.0f, 1.0f, 0.0f }, (float) glfwGetTime());
-        Matrix model = MatrixMultiply(rotation_axis, rotation);
-        Matrix view = MatrixTranslate(0.0f, 0.0f, -2.0f);
+        Matrix model = MatrixIdentity();
+
+        int axis = !!(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) - !!(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS);
+        view_rotation = fmod(view_rotation + axis * PI * delta, TAU);
+        Vector3 view_pos = Vector3RotateByAxisAngle({0.0f, 2.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, view_rotation);
+        Matrix view = MatrixLookAt(view_pos, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        
         Matrix projection = MatrixPerspective(PI / 3.0f, (float) WINDOW_X / (float) WINDOW_Y, 0.1f, 100.0f); 
+        
         Matrix mvp = MatrixMultiply(MatrixMultiply(model, view), projection);
         glUniformMatrix4fv(shader_loc_transform, 1, MATRIX_TRANSPOSED, (float *) &mvp);
         
