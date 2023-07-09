@@ -12,6 +12,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
+#include "draw.h"
+
 #define WINDOW_X 800
 #define WINDOW_Y 800
 
@@ -212,28 +214,11 @@ int main() {
     // Bind texture 
     stbi_set_flip_vertically_on_load(true);
     
-    int texture_width;
-    int texture_height;
-    int texture_color_channels;
-    
-    void *texture_raw = stbi_load("../data/bricks.png", &texture_width, &texture_height, &texture_color_channels, STBI_rgb_alpha);
-    if (!texture_raw) {
-        printf("Failed to open texture. Error: %s\n", stbi_failure_reason());
+    Texture texture;
+    if (!texture_load("../data/bricks.png", &texture)) {
+        printf("failed to open texture.");
         return -1;
     }
-    
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_raw);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    stbi_image_free(texture_raw);
 
     Vector3 view_offset = { 0.0f, 10.0f, 5.0f };
     Vector3 view_position = view_offset;
@@ -248,28 +233,24 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shader);
-
         int axis_x = (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS);
         int axis_y = (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS);
         view_position.x += axis_x * delta;
         view_position.z -= axis_y * delta; // z axis is inverted
 
         Vector3 view_target = Vector3Subtract(view_position, view_offset); 
-        Matrix view = MatrixLookAt(view_position, view_target, {0.0f, 1.0f, 0.0f});
-        
+        Matrix view = MatrixLookAt(view_position, view_target, {0.0f, 1.0f, 0.0f});    
         Matrix projection = MatrixPerspective(PI / 3.0f, (float) WINDOW_X / (float) WINDOW_Y, 0.1f, 100.0f); 
         
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glUseProgram(shader);
+        texture_use(&texture, GL_TEXTURE0);
         glBindVertexArray(vao);
-        
-       
+
         for (int x = 0; x < MAP_X; x++)
         for (int y = 0; y < MAP_Y; y++) {
-            if (!map[y * MAP_X + x]) continue;
             float model_x = (float) ((-MAP_X + 1) / 2 + x);
             float model_z = (float) ((-MAP_Y + 1) / 2 + y); 
-            Matrix model = MatrixTranslate(model_x, 0.0f, model_z);
+            Matrix model = MatrixTranslate(model_x, map[y * MAP_X + x] - 1, model_z);
             Matrix mvp = MatrixMultiply(MatrixMultiply(model, view), projection);
             glUniformMatrix4fv(shader_loc_transform, 1, MATRIX_TRANSPOSED, (float *) &mvp);
             glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / sizeof(*vertices));
@@ -281,7 +262,7 @@ int main() {
         glfwPollEvents();
     }
     
-    glDeleteTextures(1, &texture);
+    texture_free(&texture);
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
     glDeleteProgram(shader);

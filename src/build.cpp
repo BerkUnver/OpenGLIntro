@@ -8,7 +8,7 @@
 #define COMPILER_OUTPUT_DIRS "/Fd../build/stealth.pdb /Fe../build/stealth.exe /Fo../build/"
 #define PREPROCESSOR_DEFINITIONS "/DWINAPI_PARTITION_DESKTOP"
 
-#define SOURCE_FILES "main.cpp"
+#define SOURCE_FILES "main.cpp draw.cpp"
 
 // build with "cl build.cpp"
 
