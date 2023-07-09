@@ -12,3 +12,5 @@ typedef struct Texture {
 bool texture_load(const char *path, Texture *texture);
 void texture_free(Texture *texture);
 void texture_use(Texture *texture, GLenum unit);
+
+bool shader_load(const char *vs, const char *fs, GLuint *shader);

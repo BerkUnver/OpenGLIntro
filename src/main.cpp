@@ -17,7 +17,6 @@
 #define WINDOW_X 800
 #define WINDOW_Y 800
 
-#define SHADER_LOG_SIZE 1024
 #define PI 3.14159265358979323846f
 #define TAU (PI * 2.0f)
 #define MATRIX_TRANSPOSED GL_TRUE // Whether the matrix type is stored as transposed compared to an OpenGL matrix
@@ -141,45 +140,11 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     // Load shader
-    char shader_log[SHADER_LOG_SIZE];
-    
-    GLuint shader_vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(shader_vertex, 1, &shader_vertex_source, NULL);
-    glCompileShader(shader_vertex);
-
-    int shader_vertex_success;
-    glGetShaderiv(shader_vertex, GL_COMPILE_STATUS, &shader_vertex_success);
-    if (!shader_vertex_success) {
-        glGetShaderInfoLog(shader_vertex, SHADER_LOG_SIZE, NULL, shader_log);
-        printf("Failed to compile vertex shader! Error:\n%s", shader_log);
-    }
-    
-    GLuint shader_fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(shader_fragment, 1, &shader_fragment_source, NULL);
-    glCompileShader(shader_fragment);
-
-    int shader_fragment_success;
-    glGetShaderiv(shader_fragment, GL_COMPILE_STATUS, &shader_fragment_success);
-    if (!shader_fragment_success) {
-        glGetShaderInfoLog(shader_fragment, SHADER_LOG_SIZE, NULL, shader_log);
-        printf("Failed to compile fragment shader! Error:\n%s", shader_log);
-    }
-    
-    GLuint shader = glCreateProgram();
-    glAttachShader(shader, shader_vertex);
-    glAttachShader(shader, shader_fragment);
-    glLinkProgram(shader);
-
-    int shader_link_success;
-    glGetProgramiv(shader, GL_LINK_STATUS, &shader_link_success);
-    if (!shader_link_success) {
-        glGetProgramInfoLog(shader, SHADER_LOG_SIZE, NULL, shader_log);
-        printf("Failed to link shader! Error: \n%s", shader_log);
+    GLuint shader;
+    if (!shader_load(shader_vertex_source, shader_fragment_source, &shader)) {
+        printf("Failed to load default shader.\n");
         return -1;
     }
-
-    glDeleteShader(shader_vertex);
-    glDeleteShader(shader_fragment);
     
     glUseProgram(shader);
     int shader_loc_texture_0 = glGetUniformLocation(shader, "texture_0");
