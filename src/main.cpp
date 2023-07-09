@@ -69,6 +69,20 @@ float vertices[] = {
     -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f
 };
 
+#define MAP_X 9
+#define MAP_Y 9
+int map[] = {
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 1, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+};
+
 const char *shader_vertex_source = R""(
 #version 330 core
 layout (location = 0) in vec3 pos;
@@ -221,7 +235,8 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(texture_raw);
 
-    float view_rotation = 0.0f;
+    Vector3 view_offset = { 0.0f, 10.0f, 5.0f };
+    Vector3 view_position = view_offset;
     double time_previous = glfwGetTime();
     
     while (!glfwWindowShouldClose(window)) {
@@ -235,21 +250,30 @@ int main() {
 
         glUseProgram(shader);
 
-        Matrix model = MatrixIdentity();
+        int axis_x = (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS);
+        int axis_y = (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS);
+        view_position.x += axis_x * delta;
+        view_position.z -= axis_y * delta; // z axis is inverted
 
-        int axis = !!(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) - !!(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS);
-        view_rotation = fmod(view_rotation + axis * PI * delta, TAU);
-        Vector3 view_pos = Vector3RotateByAxisAngle({0.0f, 2.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, view_rotation);
-        Matrix view = MatrixLookAt(view_pos, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        Vector3 view_target = Vector3Subtract(view_position, view_offset); 
+        Matrix view = MatrixLookAt(view_position, view_target, {0.0f, 1.0f, 0.0f});
         
         Matrix projection = MatrixPerspective(PI / 3.0f, (float) WINDOW_X / (float) WINDOW_Y, 0.1f, 100.0f); 
         
-        Matrix mvp = MatrixMultiply(MatrixMultiply(model, view), projection);
-        glUniformMatrix4fv(shader_loc_transform, 1, MATRIX_TRANSPOSED, (float *) &mvp);
-        
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / sizeof(*vertices));
+        
+       
+        for (int x = 0; x < MAP_X; x++)
+        for (int y = 0; y < MAP_Y; y++) {
+            if (!map[y * MAP_X + x]) continue;
+            float model_x = (float) ((-MAP_X + 1) / 2 + x);
+            float model_z = (float) ((-MAP_Y + 1) / 2 + y); 
+            Matrix model = MatrixTranslate(model_x, 0.0f, model_z);
+            Matrix mvp = MatrixMultiply(MatrixMultiply(model, view), projection);
+            glUniformMatrix4fv(shader_loc_transform, 1, MATRIX_TRANSPOSED, (float *) &mvp);
+            glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / sizeof(*vertices));
+        }
         
         glUseProgram(0);
 
